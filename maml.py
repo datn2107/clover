@@ -55,9 +55,6 @@ def parse_args():
     parser.add_argument('--num_epoch', type=int, default=60, help='num of workers to use')
     parser.add_argument('--num_genre', type=int, default=19, help='num of workers to use')
     parser.add_argument('--num_year', type=int, default=70, help='num of workers to use')
-    # parser.add_argument('--num_director_unique', type=int, default=12, help='num of workers to use')
-    # parser.add_argument('--num_genre_unique', type=int, default=7, help='num of workers to use')
-    # parser.add_argument('--num_actor_unique', type=int, default=4, help='num of workers to use')
 
     parser.add_argument('--num_gender', type=int, default=2, help='num of workers to use')
     parser.add_argument('--num_age', type=int, default=2, help='num of workers to use')
@@ -130,7 +127,7 @@ def run(args, num_workers=1, log_interval=100, verbose=True, save_path=None):
     print(sum([param.nelement() for param in model.parameters()]))
     # set up meta-optimiser for model parameters
     meta_optimiser = torch.optim.Adam(model.parameters(), args.lr_meta)
-   # scheduler = torch.optim.lr_scheduler.StepLR(meta_optimiser, 5000, args.lr_meta_decay)
+    # scheduler = torch.optim.lr_scheduler.StepLR(meta_optimiser, 5000, args.lr_meta_decay)
 
     # initialise logger
     logger = Logger()
@@ -545,7 +542,6 @@ def run_adv(args, num_workers=1, log_interval=100, verbose=True, save_path=None)
 
     return logger, model
 
-
 def fairness_metrics(group_item_pred, group_item_rate):
     # value absolute underestimation overestimation fairness
     male_pred, female_pred = group_item_pred[0], group_item_pred[1]
@@ -625,7 +621,6 @@ def ndcg(y_pred, y, topk=3):
     dcg = np.cumsum((np.power(rel_pred, 2)-1) / np.log2(np.arange(2, topk + 2)))
     ndcg = dcg/idcg
     return ndcg[-1]
-
 
 def evaluate_test(args, model, dataloader):
     model.eval()
@@ -932,8 +927,6 @@ def get_user_embedding(args, model, dataloader, user_index):
             user_embedding[index] = user_emb[0,:]
     return user_embedding
 
-
-
 def fair_fine(args, model, dataloader_fair_train, dataloader_fair_test):
     # user embedding is not fixed after training
     model.eval()
@@ -997,8 +990,10 @@ if __name__ == '__main__':
     logging.basicConfig(filename="log/"+mode_path+".log")
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda)
     train_data = Metamovie(args, partition='train')
+
     global n_male_users, n_female_users
     n_male_users, n_female_users = 10, 10
+    
     if not args.fair:
         if not args.test:
             if args.adv:
