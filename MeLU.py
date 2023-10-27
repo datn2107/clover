@@ -22,9 +22,9 @@ class Linear(nn.Linear): #used in MAML to forward input with fast weight
             out = super(Linear, self).forward(x)
         return out
 
-class user_preference_estimator(torch.nn.Module):
+class MeLUModel(torch.nn.Module):
     def __init__(self, config):
-        super(user_preference_estimator, self).__init__()
+        super(MeLUModel, self).__init__()
         self.embedding_dim = config.embedding_dim
         if config.remove_gender:
             self.fc_user_dim = config.embedding_dim * 3

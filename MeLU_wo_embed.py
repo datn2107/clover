@@ -9,7 +9,7 @@ from collections import OrderedDict
 from embeddings import item, user
 import torch.nn as nn
 
-class Linear(nn.Linear): #used in MAML to forward input with fast weight 
+class Linear(nn.Linear): #used in MAML to forward input with fast weight
     def __init__(self, in_features, out_features):
         super(Linear, self).__init__(in_features, out_features)
         self.weight.fast = None #Lazy hack to add fast weight link
@@ -22,9 +22,9 @@ class Linear(nn.Linear): #used in MAML to forward input with fast weight
             out = super(Linear, self).forward(x)
         return out
 
-class user_preference_estimator(torch.nn.Module):
+class MeLUModel(torch.nn.Module):
     def __init__(self, config):
-        super(user_preference_estimator, self).__init__()
+        super(MeLUModel, self).__init__()
         self.embedding_dim = config.embedding_dim
         self.fc_user_dim = config.embedding_dim * 4
         self.fc_item_dim = config.embedding_dim * 4
@@ -35,7 +35,7 @@ class user_preference_estimator(torch.nn.Module):
 
         self.item_emb = item(config)
         self.user_emb = user(config)
-        
+
 
         self.fc1 = Linear(self.fc1_in_dim, self.fc2_in_dim)
         self.fc2 = Linear(self.fc2_in_dim, self.fc2_out_dim)
@@ -53,8 +53,8 @@ class user_preference_estimator(torch.nn.Module):
             self.adv_loss = nn.CrossEntropyLoss()
             # self.interaction = nn.Sequential(self.fc1, nn.ReLU(), self.fc2, nn.ReLU(), self.linear_out)
             # self.final_part = nn.ModuleList([self.fc_user, self.fc_item, self.interaction])
-            
-    
+
+
     def forward(self, x, training = True):
         rate_idx = x[:, 0]
         genre_idx = x[:, 1:26]
@@ -67,7 +67,7 @@ class user_preference_estimator(torch.nn.Module):
 
         item_emb = self.item_emb(rate_idx, genre_idx, director_idx, actor_idx)
         user_emb = self.user_emb(gender_idx, age_idx, occupation_idx, area_idx)
-        
+
         x = torch.cat((item_emb, user_emb), 1)
         x = self.final_part(x)
         # for fair
@@ -79,6 +79,3 @@ class user_preference_estimator(torch.nn.Module):
             adv_loss = self.adv_loss(x_user, gender_idx)
             return x, adv_loss
         return x
-
-
-
