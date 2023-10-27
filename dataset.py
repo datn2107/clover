@@ -51,7 +51,7 @@ class Metamovie(Dataset):
         self.partition = partition
         self.adv = args.adv
         self.seed = args.seed
-        dataset_path = "ml100k"
+        dataset_path = "ml-100k"
         if partition == 'train':
             self.state = 'user_warm_state'
         else:
@@ -81,9 +81,9 @@ class Metamovie(Dataset):
                 continue
             else:
                 self.final_index.append(user_id)
-        with open("{}/{}.json".format(dataset_path, "book_profile"), encoding="utf-8") as f:
+        with open("{}/{}.json".format(dataset_path, "movie_profile"), encoding="utf-8") as f:
             # str inside
-            self.book_dict = json.loads(f.read())
+            self.movie_dict = json.loads(f.read())
         with open("{}/{}.json".format(dataset_path, "user_profile"), encoding="utf-8") as f:
             self.user_dict = json.loads(f.read())
 
@@ -102,7 +102,7 @@ class Metamovie(Dataset):
         for m_id in tmp_x[indices[:-10]]:
             m_id = str(m_id)
             u_id = str(user_id)
-            tmp_x_converted = np.expand_dims(np.concatenate((self.book_dict[str(m_id)], self.user_dict[str(u_id)]), 0),0)
+            tmp_x_converted = np.expand_dims(np.concatenate((self.movie_dict[str(m_id)], self.user_dict[str(u_id)]), 0),0)
             try:
                 support_x_app = np.concatenate((support_x_app, tmp_x_converted), 0)
             except:
@@ -113,7 +113,7 @@ class Metamovie(Dataset):
         for m_id in tmp_x[indices[-10:]]:
             m_id = str(m_id)
             u_id = str(user_id)
-            tmp_x_converted = np.expand_dims(np.concatenate((self.book_dict[str(m_id)], self.user_dict[str(u_id)]), 0),0)
+            tmp_x_converted = np.expand_dims(np.concatenate((self.movie_dict[str(m_id)], self.user_dict[str(u_id)]), 0),0)
             try:
                 query_x_app = np.concatenate((query_x_app, tmp_x_converted), 0)
             except:
@@ -135,7 +135,7 @@ class Metamovie_fair(Dataset):
         self.partition = partition
         self.adv = args.adv
         self.seed = args.seed
-        dataset_path = "ml100k"
+        dataset_path = "ml-100k"
         if partition == 'train':
             self.state = 'user_warm_state'
         else:
@@ -165,9 +165,9 @@ class Metamovie_fair(Dataset):
                 continue
             else:
                 self.final_index.append(user_id)
-        with open("{}/{}.json".format(dataset_path, "book_profile"), encoding="utf-8") as f:
+        with open("{}/{}.json".format(dataset_path, "movie_profile"), encoding="utf-8") as f:
             # str inside
-            self.book_dict = json.loads(f.read())
+            self.movie_dict = json.loads(f.read())
         with open("{}/{}.json".format(dataset_path, "user_profile"), encoding="utf-8") as f:
             self.user_dict = json.loads(f.read())
         self.user_embedding = None
