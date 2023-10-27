@@ -21,7 +21,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 
 import util as utils
 from logger import Logger
-from fair_cls import fair_classifier
+from fair_cls import fair_classifier, get_user_embedding_adv, get_user_embedding
 from MeLU import MeLUModel
 from dataset import Metamovie, Metamovie_fair
 
@@ -406,7 +406,7 @@ def run_adv(args, num_workers=1, log_interval=100, verbose=True, save_path=None)
                 fast_parameters_max = model.local_max_part.parameters()
                 for weight in model.local_max_part.parameters():
                     weight.fast = None
-                    
+
                 for l in range(args.num_grad_steps_inner):
                     output = model(x_spt[i], y_spt[i], x_spt, y_spt)
                     logits, adv_loss = output[0], output[1]
@@ -876,6 +876,62 @@ def evaluate_test_adv(args, model, dataloader):
     )
     logging.info("cf:" + str(np.mean(con_loss_all)))
 
+def fair_fine(args, model, dataloader_fair_train, dataloader_fair_test):
+    # user embedding is not fixed after training
+    model.eval()
+    dataloader_train = DataLoader(Metamovie(args),
+                                     batch_size=1,num_workers=args.num_workers)
+    dataloader_valid = DataLoader(Metamovie(args, partition='test', test_way='new_user_valid'),#old, new_user, new_item, new_item_user
+                                        batch_size=1, num_workers=args.num_workers)
+    dataloader_test = DataLoader(Metamovie(args, partition='test', test_way='new_user_test'),#old, new_user, new_item, new_item_user
+                                        batch_size=1, num_workers=args.num_workers)
+    user_index_train = np.array(dataloader_train.dataset.final_index)
+    user_index_test = np.array(dataloader_test.dataset.final_index)
+    if args.adv:
+        train_user_embedding = get_user_embedding_adv(args, model, dataloader_train, user_index_train)
+        test_user_embedding = get_user_embedding_adv(args, model, dataloader_test, user_index_test)
+    else:
+        train_user_embedding = get_user_embedding(args, model, dataloader_train, user_index_train)
+        test_user_embedding = get_user_embedding(args, model, dataloader_test, user_index_test)
+
+    dataloader_fair_train.dataset.user_embedding = train_user_embedding
+    dataloader_fair_test.dataset.user_embedding = test_user_embedding
+
+    classifier = fair_classifier(args).cuda()
+    # pre_model.eval()
+    # pre_model.fc_user.weight.fast = None
+    # pre_model.fc_user.bias.fast = None
+    optimizer = torch.optim.Adam(classifier.parameters(), args.fair_lr)
+    for epoch in range(100):
+        pred_list, prob_list, label_list = [], [], []
+        for c, batch in tqdm(enumerate(dataloader_fair_train)):
+            classifier.train()
+            x = batch[0].cuda()
+            user_emb = batch[1].cuda()
+            optimizer.zero_grad()
+            prob, gender_idx, loss = classifier(x, user_emb)
+            loss.backward()
+            optimizer.step()
+
+        classifier.eval()
+        for c, batch in enumerate(dataloader_fair_test):
+            x = batch[0].cuda()
+            user_emb = batch[1].cuda()
+            prob, gender_idx, loss = classifier(x, user_emb)
+            prob = prob.detach().cpu().numpy()
+            label = gender_idx.detach().cpu().numpy()
+            label_list.extend(label)
+            # acc
+            pred = np.argmax(prob, axis=1)
+            pred_list.extend(pred)
+            # auc
+            prob = prob[:,1]
+            prob_list.extend(prob)
+        acc = accuracy_score(label_list, pred_list)
+        auc = roc_auc_score(label_list, prob_list)
+        # print("Epoch {} AUC: {}".format(epoch, auc))
+        print("Epoch {} Acc: {}, AUC: {}".format(epoch, acc, auc))
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -887,30 +943,47 @@ if __name__ == "__main__":
     global n_male_users, n_female_users
     n_male_users, n_female_users = 10, 10
 
-    if not args.test:
-        run_adv(args, num_workers=1, log_interval=100, verbose=True, save_path=None)
+    if not args.fair:
+        if not args.test:
+            run_adv(args, num_workers=1, log_interval=100, verbose=True, save_path=None)
+        else:
+            utils.set_seed(args.seed)
+            code_root = os.path.dirname(os.path.realpath(__file__))
+            mode_path = utils.get_path_from_args(args)
+            path = "{}/{}_result_files/".format(code_root, args.task) + mode_path
+
+            logger = utils.load_obj(path)
+            model = logger.valid_model[-1].cuda()
+
+            dataloader_valid = DataLoader(
+                Metamovie(
+                    args, partition="test", test_way="new_user_valid"
+                ),  # old, new_user, new_item, new_item_user
+                batch_size=1,
+                num_workers=args.num_workers,
+            )
+            dataloader_test = DataLoader(
+                Metamovie(
+                    args, partition="test", test_way="new_user_test"
+                ),  # old, new_user, new_item, new_item_user
+                batch_size=1,
+                num_workers=args.num_workers,
+            )
+
+            evaluate_test_adv(args, model, dataloader_test)
     else:
         utils.set_seed(args.seed)
         code_root = os.path.dirname(os.path.realpath(__file__))
+        # args.fair = False
         mode_path = utils.get_path_from_args(args)
-        path = "{}/{}_result_files/".format(code_root, args.task) + mode_path
-
+        # args.fair = True
+        path = '{}/{}_result_files/'.format(code_root, args.task) + mode_path
         logger = utils.load_obj(path)
-        model = logger.valid_model[-1].cuda()
-
-        dataloader_valid = DataLoader(
-            Metamovie(
-                args, partition="test", test_way="new_user_valid"
-            ),  # old, new_user, new_item, new_item_user
-            batch_size=1,
-            num_workers=args.num_workers,
-        )
-        dataloader_test = DataLoader(
-            Metamovie(
-                args, partition="test", test_way="new_user_test"
-            ),  # old, new_user, new_item, new_item_user
-            batch_size=1,
-            num_workers=args.num_workers,
-        )
-
-        evaluate_test_adv(args, model, dataloader_test)
+        pre_model = logger.valid_model[-1].cuda()
+        dataloader_fair_train = DataLoader(Metamovie_fair(args, partition='train'),#old, new_user, new_item, new_item_user
+                                        batch_size=128, num_workers=args.num_workers)
+        dataloader_fair_valid = DataLoader(Metamovie_fair(args, partition='test', test_way='new_user_valid'),#old, new_user, new_item, new_item_user
+                                        batch_size=128, num_workers=args.num_workers)
+        dataloader_fair_test = DataLoader(Metamovie_fair(args, partition='test', test_way='new_user_test'),#old, new_user, new_item, new_item_user
+                                        batch_size=128, num_workers=args.num_workers)
+        fair_fine(args, pre_model, dataloader_fair_train, dataloader_fair_test)
