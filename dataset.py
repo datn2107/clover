@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 def item_converting(row, rate_list, genre_list, director_list, actor_list):
     rate_idx = torch.tensor([[rate_list.index(str(row['rate']))]]).long()
-    genre_idx = -1*torch.ones(1, 7).long()
+    genre_idx = -1 * torch.ones(1, 7).long()
     for i,genre in enumerate(str(row['genre']).split(", ")):
         idx = genre_list.index(genre)
         genre_idx[0, i] = idx

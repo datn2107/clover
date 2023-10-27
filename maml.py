@@ -191,7 +191,7 @@ def parse_args():
         default=0,
         help="adversarial out type, 0: adv on user emb, 1: adv on logit, 2: adv on logit and label",
     )
-    parser.add_argument("--out2", type=int, default=-1, help="-1: no, else:有")
+    parser.add_argument("--out2", type=int, default=-1, help="-1: no, else: yes")
     parser.add_argument("--loss", type=int, default=0, help="0: mse loss, 1: ce loss")
     parser.add_argument(
         "--outer",
