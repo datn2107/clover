@@ -1,7 +1,7 @@
 # CLOVER
 This is an implemention for our SIGKDD 2022 paper based on Pytorch.
 
-[**Comprehensive Fair Meta-learned Recommender System**] (https://arxiv.org/abs/2206.04789)
+[**Comprehensive Fair Meta-learned Recommender System**](https://arxiv.org/abs/2206.04789)
 
 by Tianxin Wei, Jingrui He.
 
